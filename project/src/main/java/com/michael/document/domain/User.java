@@ -19,7 +19,7 @@ public class User {
     private String email;
     private String phone;
     private String bio;
-    private String imageUrl;
+    private String profileImageURL;
     private String qrCodeImageUri;
     private String lastLogin;
     private String createdAt;

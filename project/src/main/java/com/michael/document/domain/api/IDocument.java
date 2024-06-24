@@ -83,5 +83,4 @@ public interface IDocument {
 
     void setUpdater_Name(String updaterName);
 
-
 }

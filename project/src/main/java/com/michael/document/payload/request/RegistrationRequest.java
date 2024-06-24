@@ -10,7 +10,6 @@ import lombok.Setter;
 @Setter
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class RegistrationRequest {
-    //TODO: validation
     @NotEmpty(message = "Username cannot be empty or null")
     private String username;
     @NotEmpty(message = "First name cannot be empty or null")

@@ -6,13 +6,16 @@ import com.michael.document.handler.ApiLogoutHandler;
 import com.michael.document.payload.request.*;
 import com.michael.document.payload.response.Response;
 import com.michael.document.service.JwtService;
+import com.michael.document.service.ProfileImageService;
 import com.michael.document.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -21,11 +24,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.net.URI;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.Map;
 
-import static com.michael.document.constant.Constants.FILE_STORAGE;
 import static com.michael.document.utils.RequestUtils.getResponse;
 import static java.util.Collections.emptyMap;
 import static org.springframework.http.MediaType.IMAGE_JPEG_VALUE;
@@ -37,13 +37,14 @@ import static org.springframework.http.MediaType.IMAGE_PNG_VALUE;
 @Slf4j
 public class UserController {
 
-    public final UserService userService;
-    public final JwtService jwtService;
+    private final UserService userService;
+    private final ProfileImageService profileImageService;
+    private final JwtService jwtService;
     private final ApiLogoutHandler apiLogoutHandler;
 
     @PostMapping("/register")
     public ResponseEntity<Response> saveUser(@RequestBody @Valid RegistrationRequest registrationRequest,
-                                             HttpServletRequest request) {
+                                             HttpServletRequest request) throws IOException {
         userService.createUser(registrationRequest);
         return ResponseEntity.created(URI.create(""))
                 .body(getResponse(
@@ -102,7 +103,7 @@ public class UserController {
     }
 
     //reset password when user not logged
-    @PostMapping("/resetpassword")
+    @PostMapping("/reset_password")
     public ResponseEntity<Response> resetPassword(@RequestBody @Valid EmailRequest emailRequest,
                                                   HttpServletRequest request) {
         userService.resetPassword(emailRequest);
@@ -126,7 +127,7 @@ public class UserController {
                         HttpStatus.OK));
     }
 
-    @PostMapping("/resetpassword/reset")
+    @PostMapping("/reset_password/reset")
     public ResponseEntity<Response> doResetPassword(@RequestBody @Valid ResetPasswordRequest resetPasswordRequest,
                                                     HttpServletRequest request) {
         userService.updatePassword(resetPasswordRequest);
@@ -156,6 +157,7 @@ public class UserController {
 
     //profile
     @GetMapping("/profile")
+    //  @PreAuthorize("hasAnyAuthority('user:read') or hasAnyRole('USER', 'ADMIN', 'SUPERADMIN')")
     public ResponseEntity<Response> profile(@AuthenticationPrincipal User userPrincipal,
                                             HttpServletRequest request) {
         var user = userService.getUserByUserId(userPrincipal.getUserId());
@@ -180,7 +182,7 @@ public class UserController {
                         HttpStatus.OK));
     }
 
-    @PatchMapping("/updaterole")
+    @PatchMapping("/update_role")
     public ResponseEntity<Response> updateUserRole(@AuthenticationPrincipal User userPrincipal,
                                                    @RequestBody RoleRequest roleRequest,
                                                    HttpServletRequest request) {
@@ -193,11 +195,20 @@ public class UserController {
                         HttpStatus.OK));
     }
 
-    @PatchMapping("/photo")
-    public ResponseEntity<Response> updatePhoto(@AuthenticationPrincipal User user,
+    @GetMapping(value = "/image/{filename}", produces = {IMAGE_PNG_VALUE, IMAGE_JPEG_VALUE})
+    public ResponseEntity<?> getProfileImage(@PathVariable("filename") String filename) throws IOException {
+        byte[] profileImage = profileImageService.getProfileImage(filename);
+        return ResponseEntity.ok()
+                .contentType(MediaType.valueOf(IMAGE_JPEG_VALUE))
+                .body(new ByteArrayResource(profileImage));
+    }
+
+    @PatchMapping("/image")
+    public ResponseEntity<Response> updateImageProfile(@AuthenticationPrincipal User user,
                                                 @RequestParam("file") MultipartFile file,
-                                                HttpServletRequest request) {
-        var imageUrl = userService.uploadPhoto(user.getUserId(), file);
+                                                HttpServletRequest request) throws IOException {
+        log.info("user {}", user );
+        var imageUrl = profileImageService.updateProfileImage(user, file);
         return ResponseEntity.ok()
                 .body(getResponse(
                         request,
@@ -207,22 +218,32 @@ public class UserController {
     }
 
 
-    //TODO: fix
-    @GetMapping(value = "/photo{filename}", produces = {IMAGE_PNG_VALUE, IMAGE_JPEG_VALUE})
-    public byte[] getPhoto(@PathVariable("filename") String filename) throws IOException {
-        return Files.readAllBytes(Paths.get(FILE_STORAGE + filename));
+
+    @PatchMapping("/image/delete")
+    public ResponseEntity<Response> deleteProfileImage(@AuthenticationPrincipal User user,
+                                                HttpServletRequest request) throws IOException {
+        var imageUrl = profileImageService.deleteProfileImageAndSetDefaultImage(user);
+        return ResponseEntity.ok()
+                .body(getResponse(
+                        request,
+                        Map.of("imageUrl", imageUrl),
+                        "Photo delete successfully.",
+                        HttpStatus.OK));
     }
+
+
+
 
     @PostMapping("/logout")
     public ResponseEntity<Response> logout(HttpServletResponse response,
                                            HttpServletRequest request,
                                            Authentication authentication) {
-        User principal = (User)authentication.getPrincipal();
+        User principal = (User) authentication.getPrincipal();
         apiLogoutHandler.logout(request, response, authentication);
         return ResponseEntity.ok()
                 .body(getResponse(
                         request,
-                       emptyMap(),
+                        emptyMap(),
                         "You logged put successfully.",
                         HttpStatus.OK));
     }
@@ -275,7 +296,4 @@ public class UserController {
                         "Account updated successfully.",
                         HttpStatus.OK));
     }
-
-
-
 }

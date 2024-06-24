@@ -1,25 +1,26 @@
 package com.michael.document.utils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.exc.MismatchedInputException;
 import com.michael.document.exceptions.payload.ApiException;
 import com.michael.document.payload.response.Response;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.authentication.CredentialsExpiredException;
-import org.springframework.security.authentication.DisabledException;
-import org.springframework.security.authentication.LockedException;
+import org.springframework.security.authentication.*;
+
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
+
+import static java.time.LocalTime.now;
 import static java.util.Collections.emptyMap;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.exception.ExceptionUtils.getRootCauseMessage;
-import static org.springframework.http.HttpStatus.FORBIDDEN;
-import static org.springframework.http.HttpStatus.UNAUTHORIZED;
+import static org.springframework.http.HttpStatus.*;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
 public class RequestUtils {
@@ -44,7 +45,8 @@ public class RequestUtils {
                 if (httpStatus.isSameCodeAs(UNAUTHORIZED)) {
                     return "You are not logged in";
                 }
-                if (exception instanceof DisabledException || exception instanceof LockedException || exception instanceof BadCredentialsException || exception instanceof CredentialsExpiredException || exception instanceof ApiException) {
+                if (exception instanceof DisabledException || exception instanceof LockedException || exception instanceof BadCredentialsException ||
+                        exception instanceof CredentialsExpiredException || exception instanceof ApiException) {
                     return exception.getMessage();
                 }
                 if (httpStatus.is5xxServerError()) {
@@ -76,8 +78,31 @@ public class RequestUtils {
         if (exception instanceof AccessDeniedException) {
             Response apiResponse = getErrorResponse(request, response, exception, FORBIDDEN);
             writeResponse.accept(response, apiResponse);
+        } else if (exception instanceof InsufficientAuthenticationException) {
+            Response apiResponse = getErrorResponse(request, response, exception, UNAUTHORIZED);
+            writeResponse.accept(response, apiResponse);
+        } else if (exception instanceof MismatchedInputException) {
+            Response apiResponse = getErrorResponse(request, response, exception, BAD_REQUEST);
+            writeResponse.accept(response, apiResponse);
+        } else if (exception instanceof DisabledException || exception instanceof LockedException || exception instanceof BadCredentialsException ||
+                exception instanceof CredentialsExpiredException || exception instanceof ApiException) {
+            Response apiResponse = getErrorResponse(request, response, exception, BAD_REQUEST);
+            writeResponse.accept(response, apiResponse);
+        }else{
+            Response apiResponse =getErrorResponse(request, response, exception, INTERNAL_SERVER_ERROR);
+            writeResponse.accept(response, apiResponse);
         }
+
     }
+
+
+    public static Response handleErrorResponse(String message,
+                                               String exception,
+                                               HttpServletRequest request,
+                                               HttpStatusCode status) {
+        return new Response(now().toString(), status.value(), request.getRequestURI(), HttpStatus.valueOf(status.value()), message, exception, emptyMap());
+    }
+
 
     private static Response getErrorResponse(HttpServletRequest request,
                                              HttpServletResponse response,

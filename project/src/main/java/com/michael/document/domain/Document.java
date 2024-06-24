@@ -22,6 +22,7 @@ public class Document {
     private String referenceId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    //
     private String ownerName;
     private String ownerEmail;
     private String ownerPhone;

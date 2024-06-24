@@ -17,6 +17,7 @@ import com.michael.document.repository.ConfirmationRepository;
 import com.michael.document.repository.CredentialRepository;
 import com.michael.document.repository.RoleRepository;
 import com.michael.document.repository.UserRepository;
+import com.michael.document.service.ProfileImageService;
 import com.michael.document.service.UserService;
 import dev.samstevens.totp.code.CodeGenerator;
 import dev.samstevens.totp.code.CodeVerifier;
@@ -33,6 +34,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
@@ -60,12 +62,14 @@ public class UserServiceImpl implements UserService {
     private final ApplicationEventPublisher publisher;
     private final CacheStore<String, Integer> userCache;
     private final PasswordEncoder encoder;
+    private final ProfileImageService profileImageService;
 
 
     @Override
-    public void createUser(RegistrationRequest request) {
+    public void createUser(RegistrationRequest request) throws IOException {
         var userEntity = createNewUser(request);
         userRepository.save(userEntity);
+        profileImageService.saveTempProfileImage(userEntity);
         var credentialEntity = new CredentialEntity(encoder.encode(request.getPassword()), userEntity);
         credentialRepository.save(credentialEntity);
         var confirmationEntity = new ConfirmationEntity(userEntity);
@@ -274,11 +278,12 @@ public class UserServiceImpl implements UserService {
         userRepository.save(userEntity);
     }
 
+    //TODO: update method
     @Override
     public String uploadPhoto(String userId, MultipartFile file) {
         var userEntity = getUserEntityByUserId(userId);
         var photoUrl = photoFunction.apply(userId, file);
-        userEntity.setImageUrl(photoUrl + "?timestamp=" + System.currentTimeMillis());
+        userEntity.setProfileImageURL(photoUrl + "?timestamp=" + System.currentTimeMillis());
         userRepository.save(userEntity);
         return photoUrl;
     }
@@ -377,7 +382,8 @@ public class UserServiceImpl implements UserService {
                 .qrCodeSecret(EMPTY)
                 .phone(EMPTY)
                 .bio(EMPTY)
-                .imageUrl("https://cdn-icons-png.flaticon.com/512/149/149071.png")
+             //   .imageUrl(profileImageService.)
+               // .imageUrl("https://cdn-icons-png.flaticon.com/512/149/149071.png")
                 .build();
     }
 

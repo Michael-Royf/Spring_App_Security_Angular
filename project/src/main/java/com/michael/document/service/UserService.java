@@ -7,8 +7,10 @@ import com.michael.document.enumerations.LoginType;
 import com.michael.document.payload.request.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+
 public interface UserService {
-    void createUser(RegistrationRequest request);
+    void createUser(RegistrationRequest request) throws IOException;
 
     RoleEntity getRoleName(String name);
 
@@ -49,6 +51,7 @@ public interface UserService {
 
     void toggleCredentialsExpired(String userId);
 
+    //
     String uploadPhoto(String userId, MultipartFile file);
 
     User getUserById(Long id);

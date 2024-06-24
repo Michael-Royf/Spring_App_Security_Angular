@@ -38,7 +38,10 @@ public class UserEntity extends Auditable {
     private LocalDateTime lastLogin;
     private String phone;
     private String bio;
-    private String imageUrl;
+
+    @Column(name = "profile_image_URL", unique = true)
+    private String profileImageURL;
+
     private boolean accountNonExpired;
     private boolean accountNonLocked;
     private boolean enabled;
