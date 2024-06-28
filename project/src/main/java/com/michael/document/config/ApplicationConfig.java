@@ -24,13 +24,8 @@ public class ApplicationConfig {
         return new ModelMapper();
     }
 
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(12);
-    }
 
 
-//
 //    @Bean
 //    CommandLineRunner commandLineRunner (RoleRepository roleRepository){
 //        return args -> {
@@ -49,6 +44,11 @@ public class ApplicationConfig {
 //            RequestContext.start();
 //        };
 //    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder(){
+        return new BCryptPasswordEncoder(12);
+    }
 
 
 }

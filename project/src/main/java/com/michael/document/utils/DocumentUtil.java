@@ -3,6 +3,7 @@ package com.michael.document.utils;
 import com.michael.document.domain.Document;
 import com.michael.document.domain.User;
 import com.michael.document.entity.DocumentEntity;
+import com.michael.document.payload.response.DocumentResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.util.StringUtils;
@@ -10,12 +11,12 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 @Slf4j
 public class DocumentUtil {
 
-    public static Document fromDocumentEntity(DocumentEntity documentEntity, User createdBy, User updatedBy) {
-        log.info("create document in from");
-        var document = new Document();
-        log.info("create document in from");
+
+    //TODO: fix
+    public static DocumentResponse fromDocumentEntity(DocumentEntity documentEntity,
+                                                      User createdBy, User updatedBy) {
+        var document = new DocumentResponse();
         BeanUtils.copyProperties(documentEntity, document);
-        log.info("copy document  with BEANS UTILS");
         document.setOwnerName(createdBy.getFirstName() + " " + createdBy.getLastName());
         document.setOwnerEmail(createdBy.getEmail());
         document.setOwnerPhone(createdBy.getPhone());

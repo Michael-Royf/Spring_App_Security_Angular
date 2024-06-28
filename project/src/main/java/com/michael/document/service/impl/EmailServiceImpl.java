@@ -10,6 +10,7 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import static com.michael.document.constant.Constants.*;
 import static com.michael.document.utils.emailUtils.EmailUtils.getEmailMessage;
 import static com.michael.document.utils.emailUtils.EmailUtils.getResetPasswordMessage;
 
@@ -18,8 +19,6 @@ import static com.michael.document.utils.emailUtils.EmailUtils.getResetPasswordM
 @Slf4j
 public class EmailServiceImpl implements EmailService {
 
-    public static final String NEW_USER_ACCOUNT_VERIFICATION = "New User Account Verification";
-    public static final String PASSWORD_RESET_REQUEST = "Reset Password Request";
     private final JavaMailSender mailSender;
 //    @Value("${spring.mail.verify.host}")
     private String host = "http://localhost:8080";
@@ -38,8 +37,7 @@ public class EmailServiceImpl implements EmailService {
             message.setText(getEmailMessage(name, host, key));
             mailSender.send(message);
         } catch (Exception exception) {
-            log.error(exception.getMessage());
-            throw new ApiException("Unable to send email");
+            throw new ApiException(UNABLE_TO_SEND_EMAIL);
         }
     }
 
@@ -54,8 +52,7 @@ public class EmailServiceImpl implements EmailService {
             message.setText(getResetPasswordMessage(name, host, key));
             mailSender.send(message);
         } catch (Exception exception) {
-            log.error(exception.getMessage());
-            throw new ApiException("Unable to send email");
+            throw new ApiException(UNABLE_TO_SEND_EMAIL);
         }
     }
 }

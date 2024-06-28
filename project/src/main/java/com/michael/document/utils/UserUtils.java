@@ -16,12 +16,12 @@ import java.time.LocalDateTime;
 import java.util.function.BiFunction;
 import java.util.function.Supplier;
 
-import static com.michael.document.constant.Constants.GET_ARRAYS_LLC;
+import static com.michael.document.constant.Constants.MICHAEL_ROYF_LLC;
 import static dev.samstevens.totp.util.Utils.getDataUriForImage;
 
 @Slf4j
 public class UserUtils {
-//TODO: Learn
+    public final static String UNABLE_TO_CREATE_QR_CODE_URI = "Unable to create QR code URI";
 
     public static User fromUserEntity(UserEntity userEntity, RoleEntity role, CredentialEntity credentialEntity) {
         User user = new User();
@@ -40,7 +40,7 @@ public class UserUtils {
     }
 
     public static BiFunction<String, String, QrData> qrDataFunction = (email, qrCodeSecret) -> new QrData.Builder()
-            .issuer(GET_ARRAYS_LLC)
+            .issuer(MICHAEL_ROYF_LLC)
             .label(email)
             .secret(qrCodeSecret)
             .algorithm(HashingAlgorithm.SHA1)
@@ -55,11 +55,10 @@ public class UserUtils {
         try {
             imageData = generator.generate(data);
         } catch (Exception exception) {
-            //throw new ApiException(exception.getMessage());
-            throw new ApiException("Unable to create QR code URI");
+            log.error(UNABLE_TO_CREATE_QR_CODE_URI);
+            throw new ApiException(UNABLE_TO_CREATE_QR_CODE_URI);
         }
         return getDataUriForImage(imageData, generator.getImageMimeType());
-
     };
 
     public static Supplier<String> qrCodeSecret = () -> new DefaultSecretGenerator().generate();

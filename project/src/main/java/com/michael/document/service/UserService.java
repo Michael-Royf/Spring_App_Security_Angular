@@ -3,14 +3,16 @@ package com.michael.document.service;
 import com.michael.document.domain.User;
 import com.michael.document.entity.CredentialEntity;
 import com.michael.document.entity.RoleEntity;
+import com.michael.document.entity.UserEntity;
 import com.michael.document.enumerations.LoginType;
 import com.michael.document.payload.request.*;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 
 public interface UserService {
     void createUser(RegistrationRequest request) throws IOException;
+
+    void saveUser(UserEntity userEntity);
 
     RoleEntity getRoleName(String name);
 
@@ -19,6 +21,10 @@ public interface UserService {
     void updateLoginAttempt(String email, LoginType loginType);
 
     User getUserByUserId(String userId);
+
+    UserEntity getUserEntityByUserId(String userId);
+
+    User getUserById(Long id);
 
     User getUserByEmail(String email);
 
@@ -30,9 +36,9 @@ public interface UserService {
 
     User verifyQrCode(String userId, String qrCode);
 
-    void resetPassword(EmailRequest emailRequest);
-
     User verifyPasswordKey(String key);
+
+    void resetPassword(EmailRequest emailRequest);
 
     void updatePassword(ResetPasswordRequest resetPasswordRequest);
 
@@ -51,8 +57,5 @@ public interface UserService {
 
     void toggleCredentialsExpired(String userId);
 
-    //
-    String uploadPhoto(String userId, MultipartFile file);
 
-    User getUserById(Long id);
 }

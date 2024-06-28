@@ -17,7 +17,6 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Service;
 
@@ -40,7 +39,6 @@ import static org.springframework.security.core.authority.AuthorityUtils.commaSe
 
 
 @Service
-@Slf4j
 @RequiredArgsConstructor
 public class JwtServiceImpl extends JwtConfiguration implements JwtService {
     private final UserService userService;
@@ -72,7 +70,7 @@ public class JwtServiceImpl extends JwtConfiguration implements JwtService {
             Jwts.builder()
                     .header().add(Map.of(TYPE, JWT_TYPE))  //TODO:
                     .and()
-                    .audience().add(GET_ARRAYS_LLC)
+                    .audience().add(MICHAEL_ROYF_LLC)
                     .and()
                     .id(UUID.randomUUID().toString())
                     .issuedAt(from(now()))

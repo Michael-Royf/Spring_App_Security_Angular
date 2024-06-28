@@ -1,31 +1,26 @@
 package com.michael.document.service.impl;
 
-import com.michael.document.domain.Document;
-import com.michael.document.domain.api.IDocument;
 import com.michael.document.entity.DocumentEntity;
 import com.michael.document.exceptions.payload.ApiException;
+import com.michael.document.payload.response.DocumentResponse;
 import com.michael.document.repository.DocumentRepository;
-import com.michael.document.repository.UserRepository;
 import com.michael.document.service.DocumentService;
 import com.michael.document.service.UserService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.*;
+import java.util.stream.Collectors;
 
-import static com.michael.document.constant.Constants.FILE_STORAGE;
 import static com.michael.document.utils.DocumentUtil.*;
-import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
+import static com.michael.document.utils.FileCompressor.compressData;
+import static com.michael.document.utils.FileCompressor.decompressData;
 import static org.apache.commons.io.FileUtils.byteCountToDisplaySize;
 import static org.apache.commons.io.FilenameUtils.getExtension;
 import static org.springframework.util.StringUtils.cleanPath;
@@ -37,121 +32,123 @@ import static org.springframework.util.StringUtils.cleanPath;
 public class DocumentServiceImpl implements DocumentService {
 
     private final DocumentRepository documentRepository;
-    private final UserRepository userRepository;// TODO:
     private final UserService userService;
 
+    public static final String NO_DOCUMENT_FOUND_BY_ID = "No document found by ID: %s";
+    public static final String UNABLE_TO_SAVE_DOCUMENTS = "Unable to save documents";
+    public static final String INVALID_FILE_NAME = "Invalid file name: %s";
+    //  public static final String UNABLE_TO_UPDATE_DOCUMENTS = "Unable to update documents";
+    final String DOCUMENT_RETRIEVAL_ERROR = "Unable to retrieve document with ID: %s";
+
+
     @Override
-    public Page<IDocument> getDocuments(int page, int size) {
-        return documentRepository.findDocuments(PageRequest.of(page, size, Sort.by("name")));
+    public Page<DocumentResponse> getAllDocuments(int pageNo, int pageSize,
+                                                  String sortBy, String sortDir) {
+        Pageable pageable = createPageable(pageNo, pageSize, sortBy, sortDir);
+        Page<DocumentEntity> documentsEntity = documentRepository.findAll(pageable);
+
+        List<DocumentResponse> documentResponses = documentsEntity
+                .stream()
+                .map(documentEntity -> fromDocumentEntity(
+                        documentEntity,
+                        userService.getUserById(documentEntity.getOwner().getId()),
+                        userService.getUserById(documentEntity.getOwner().getId())))
+                .collect(Collectors.toList());
+        return new PageImpl<>(documentResponses,
+                documentsEntity.getPageable(),
+                documentsEntity.getTotalElements());
     }
 
     @Override
-    public Page<IDocument> getDocuments(int page, int size, String name) {
-        return documentRepository.findDocumentsByName(name, PageRequest.of(page, size, Sort.by("name")));
+    public Page<DocumentResponse> searchAllDocumentsByNameOrDescription(String query, int pageNo, int pageSize,
+                                                                        String sortBy, String sortDir) {
+        Pageable pageable = createPageable(pageNo, pageSize, sortBy, sortDir);
+//TODO: fix
+        List<DocumentEntity> documentsEntity = documentRepository.searchDocuments(query);
+        List<DocumentResponse> documentResponses = documentsEntity
+                .stream()
+                .map(documentEntity -> fromDocumentEntity(
+                        documentEntity,
+                        userService.getUserById(documentEntity.getOwner().getId()),
+                        userService.getUserById(documentEntity.getOwner().getId())))
+                .collect(Collectors.toList());
+        return new PageImpl<>(documentResponses,
+                pageable,
+                documentResponses.size());
     }
 
+
     @Override
-    public Collection<Document> saveDocument(String userId, List<MultipartFile> documents) {
-        List<Document> newDocuments = new ArrayList<>();
-        var userEntity = userRepository.findUserEntityByUserId(userId).get();//todo:
-        var storage = Paths.get(FILE_STORAGE).toAbsolutePath().normalize();
-        log.info("paths {}", storage);
+    public Collection<DocumentResponse> saveDocument(String userId, List<MultipartFile> documents) {
+        List<DocumentResponse> listDocuments = new ArrayList<>();
+        var userEntity = userService.getUserEntityByUserId(userId);
+
         try {
             for (MultipartFile document : documents) {
                 var filename = cleanPath(Objects.requireNonNull(document.getOriginalFilename()));
                 if ("..".contains(filename)) {
-                    throw new ApiException(String.format("Invalid file name: %s", filename));
+                    throw new ApiException(String.format(INVALID_FILE_NAME, filename));
                 }
                 var documentEntity = DocumentEntity.builder()
                         .documentId(UUID.randomUUID().toString())
                         .name(filename)
-                        .owner(userEntity)
+                        .data(compressData(document.getBytes()))
                         .extension(getExtension(filename))
                         .uri(getDocumentUri(filename))
                         .formattedSize(byteCountToDisplaySize(document.getSize()))
                         .icon(setIcon(getExtension(filename)))
+                        .owner(userEntity)
                         .build();
-                log.info("create document entity");
-                DocumentEntity savedDocument = documentRepository.save(documentEntity);
-                log.info("save document entity in db");
-                Files.copy(document.getInputStream(), storage.resolve(filename), REPLACE_EXISTING);
-                log.info("copy file in storage");
-//                Document newDocument = new Document();
-//                log.info("create document in from");
-//                BeanUtils.copyProperties(documentEntity, document);
-//                log.info("copy document  with BEANS UTILS");
-//
-//           Long idUpdatedBy = savedDocument.getUpdatedBy();
-//                log.info("idUpdatedBy {}" ,idUpdatedBy);
-//                User updatedBy = userService.getUserById(3L);
-//                User createdBy = userService.getUserById(3L);
-//                newDocument.setOwmerName(createdBy.getFirstName() + " " + createdBy.getLastName());
-//                newDocument.setOwnerEmail(createdBy.getEmail());
-//                newDocument.setOwnerPhone(createdBy.getPhone());
-//                newDocument.setOwnerLastLogin(createdBy.getLastLogin());
-//                newDocument.setUpdaterName(updatedBy.getFirstName() + " " + updatedBy.getLastName());
 
-//                Document newDocument = fromDocumentEntity(savedDocument,
-//                        userService.getUserById(savedDocument.getCreatedBy()),
-//                        userService.getUserById(savedDocument.getUpdatedBy()));
-                //   savedDocument.getOwner().getId();
-                //TODO: check idm
-                Document newDocument = fromDocumentEntity(savedDocument,
+                DocumentEntity savedDocument = documentRepository.save(documentEntity);
+                log.info("Saved document in database by name: {}", savedDocument.getName());
+                //TODO: fix
+                DocumentResponse newDocument = fromDocumentEntity(
+                        savedDocument,
                         userService.getUserById(savedDocument.getOwner().getId()),
                         userService.getUserById(savedDocument.getOwner().getId()));
-
-                log.info("create DOCUMENT");
-                newDocuments.add(newDocument);
-                log.info("add  DOCUMENT to list");
+                listDocuments.add(newDocument);
             }
-            return newDocuments;
+            return listDocuments;
         } catch (Exception exception) {
-            throw new ApiException("Unable to save documents");
+            throw new ApiException(UNABLE_TO_SAVE_DOCUMENTS);
         }
-
     }
 
     @Override
-    public IDocument updateDocument(String documentId, String name, String description) {
+    public void deleteDocument(String documentId) {
+        //TODO: check
+        //   DocumentEntity documentEntity = getDocumentEntity(documentId);
+        documentRepository.delete(getDocumentEntity(documentId));
+    }
+
+    @Override
+    public DocumentResponse getDocumentResponseByDocumentId(String documentId) {
+        DocumentEntity documentEntity = getDocumentEntity(documentId);
+        return fromDocumentEntity(documentEntity,
+                userService.getUserById(documentEntity.getOwner().getId()),
+                userService.getUserById(documentEntity.getOwner().getId()));
+    }
+
+    @Override
+    public Resource getResource(String documentId) {
         try {
-            var documentEntity = getDocumentEntity(documentId);
-            var document = Paths.get(FILE_STORAGE).resolve(documentEntity.getName()).toAbsolutePath().normalize();
-            Files.move(document, document.resolveSibling(name), REPLACE_EXISTING);
-            documentEntity.setName(name);
-            documentEntity.setDescription(description);
-            documentRepository.save(documentEntity);
-            return getDocumentByDocumentId(documentId);
+            DocumentEntity documentEntity = getDocumentEntity(documentId);
+            return new ByteArrayResource(decompressData(documentEntity.getData()));
         } catch (Exception exception) {
-            throw new ApiException("Unable to update documents");
+            throw new ApiException(String.format(DOCUMENT_RETRIEVAL_ERROR, documentId));
         }
     }
 
     private DocumentEntity getDocumentEntity(String documentId) {
         return documentRepository.findByDocumentId(documentId)
-                .orElseThrow(() -> new ApiException("Document Not found"));
+                .orElseThrow(() ->
+                        new ApiException(String.format(NO_DOCUMENT_FOUND_BY_ID, documentId)));
     }
 
-    @Override
-    public void deleteDocument(String documentId) {
-
-    }
-
-    @Override
-    public IDocument getDocumentByDocumentId(String documentId) {
-        return documentRepository.findDocumentByDocumentId(documentId)
-                .orElseThrow(() -> new ApiException("Document Not found"));
-    }
-
-    @Override
-    public Resource getResource(String documentName) {
-        try {
-            var filePath = Paths.get(FILE_STORAGE).toAbsolutePath().normalize().resolve(documentName);
-            if (!Files.exists(filePath)) {
-                throw new ApiException("Document not found");
-            }
-            return new UrlResource(filePath.toUri());
-        } catch (Exception exception) {
-            throw new ApiException("Unable to update documents");
-        }
+    private Pageable createPageable(int pageNo, int pageSize, String sortBy, String sortDir) {
+        Sort sort = sortDir.equalsIgnoreCase(Sort.Direction.ASC.name()) ?
+                Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
+        return PageRequest.of(pageNo, pageSize, sort);
     }
 }

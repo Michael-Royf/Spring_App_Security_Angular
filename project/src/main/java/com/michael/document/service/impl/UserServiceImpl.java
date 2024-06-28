@@ -12,6 +12,8 @@ import com.michael.document.enumerations.EventType;
 import com.michael.document.enumerations.LoginType;
 import com.michael.document.event.UserEvent;
 import com.michael.document.exceptions.payload.ApiException;
+import com.michael.document.exceptions.payload.ExistException;
+import com.michael.document.exceptions.payload.NotFoundException;
 import com.michael.document.payload.request.*;
 import com.michael.document.repository.ConfirmationRepository;
 import com.michael.document.repository.CredentialRepository;
@@ -28,24 +30,20 @@ import dev.samstevens.totp.time.TimeProvider;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
-import java.util.function.BiFunction;
 
-import static com.michael.document.constant.Constants.FILE_STORAGE;
+import static com.michael.document.constant.Constants.*;
 import static com.michael.document.utils.UserUtils.*;
 import static com.michael.document.validation.UserValidation.verifyAccountStatus;
-import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 
 
@@ -67,6 +65,11 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public void createUser(RegistrationRequest request) throws IOException {
+        validateNewUsernameAndEmail(
+                StringUtils.EMPTY,
+                request.getUsername(),
+                request.getEmail());
+
         var userEntity = createNewUser(request);
         userRepository.save(userEntity);
         profileImageService.saveTempProfileImage(userEntity);
@@ -78,9 +81,14 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    public void saveUser(UserEntity userEntity) {
+        userRepository.save(userEntity);
+    }
+
+    @Override
     public RoleEntity getRoleName(String name) {
-        var role = roleRepository.findByNameIgnoreCase(name);
-        return role.orElseThrow(() -> new ApiException("Role not found"));
+        return roleRepository.findByNameIgnoreCase(name).orElseThrow(() ->
+                new NotFoundException(String.format(NO_ROLE_FOUND_BY_NAME, name)));
     }
 
     @Override
@@ -120,23 +128,30 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public User getUserByUserId(String userId) {
-        UserEntity userEntity = userRepository.findUserEntityByUserId(userId)
-                .orElseThrow(() -> new ApiException("user not found"));
-        return fromUserEntity(userEntity, userEntity.getRoles(), getUserCredentialById(userEntity.getId()));
+        UserEntity userEntity = getUserEntityByUserId(userId);
+        return fromUserEntity(userEntity, userEntity.getRoles(),
+                getUserCredentialById(userEntity.getId()));
     }
 
     @Override
+    public UserEntity getUserEntityByUserId(String userId) {
+        return userRepository.findUserEntityByUserId(userId)
+                .orElseThrow(() -> new NotFoundException(NO_USER_FOUND_BY_ID));
+    }
+
+
+    @Override
     public User getUserByEmail(String email) {
-        UserEntity userEntity = userRepository.findByEmailIgnoreCase(email)
-                .orElseThrow(() -> new ApiException("user not found"));
-        return fromUserEntity(userEntity, userEntity.getRoles(), getUserCredentialById(userEntity.getId()));
+        UserEntity userEntity = getUserEntityByEmail(email);
+        return fromUserEntity(userEntity, userEntity.getRoles(),
+                getUserCredentialById(userEntity.getId()));
     }
 
 
     @Override
     public CredentialEntity getUserCredentialById(Long userId) {
         return credentialRepository.getCredentialEntityByUserEntityId(userId)
-                .orElseThrow(() -> new ApiException("Unable to find user credential"));
+                .orElseThrow(() -> new NotFoundException(USER_CREDENTIAL_NOT_FOUND));
     }
 
     @Override
@@ -169,6 +184,22 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    public User verifyPasswordKey(String key) {
+        var confirmationEntity = getUserConfirmation(key);
+        if (confirmationEntity == null) {
+            throw new ApiException(TOKEN_NOT_FOUND);
+        }
+        var userEntity = getUserEntityByEmail(confirmationEntity.getUserEntity().getEmail());
+        if (userEntity == null) {
+            throw new ApiException(INCORRECT_TOKEN);
+        }
+        verifyAccountStatus(userEntity);
+        confirmationRepository.delete(confirmationEntity);
+        return fromUserEntity(userEntity, userEntity.getRoles(), getUserCredentialById(userEntity.getId()));
+    }
+
+    //если забыл пароль
+    @Override
     public void resetPassword(EmailRequest emailRequest) {
         var userEntity = getUserEntityByEmail(emailRequest.getEmail());
         var confirmation = getUserConfirmation(userEntity);
@@ -179,29 +210,10 @@ public class UserServiceImpl implements UserService {
             confirmationRepository.save(confirmationEntity);
             publisher.publishEvent(new UserEvent(userEntity, EventType.RESET_PASSWORD, Map.of("key", confirmationEntity.getKey())));
         }
-
-    }
-
-    @Override
-    public User verifyPasswordKey(String key) {
-        var confirmationEntity = getUserConfirmation(key);
-        if (confirmationEntity == null) {
-            throw new ApiException("Unable to find token");
-        }
-        var userEntity = getUserEntityByEmail(confirmationEntity.getUserEntity().getEmail());
-        if (userEntity == null) {
-            throw new ApiException("Incorrect token");
-        }
-        verifyAccountStatus(userEntity);
-        confirmationRepository.delete(confirmationEntity);
-        return fromUserEntity(userEntity, userEntity.getRoles(), getUserCredentialById(userEntity.getId()));
     }
 
     @Override
     public void updatePassword(ResetPasswordRequest resetPasswordRequest) {
-        if (!resetPasswordRequest.getConfirmationPassword().equals(resetPasswordRequest.getNewPassword())) {
-            throw new ApiException("Passwords don't match. Please try again");
-        }
         var user = getUserByUserId(resetPasswordRequest.getUserId());
         var credentials = getUserCredentialById(user.getId());
         credentials.setPassword(encoder.encode(resetPasswordRequest.getNewPassword()));
@@ -210,14 +222,11 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public void updatePassword(String userId, UpdatePasswordRequest updatePasswordRequest) {
-        if (!updatePasswordRequest.getConfirmationPassword().equals(updatePasswordRequest.getNewPassword())) {
-            throw new ApiException("Passwords don't match. Please try again");
-        }
         var user = getUserEntityByUserId(userId);
         verifyAccountStatus(user);
         var credentials = getUserCredentialById(user.getId());
         if (!encoder.matches(updatePasswordRequest.getCurrentPassword(), credentials.getPassword())) {
-            throw new ApiException("Existing password is incorrect");
+            throw new ApiException(EXISTING_PASSWORD_INCORRECT);
         }
         credentials.setPassword(encoder.encode(updatePasswordRequest.getNewPassword()));
         credentialRepository.save(credentials);
@@ -225,8 +234,12 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public User updateUser(String userId, RegistrationRequest registrationRequest) {
-        //TODO: check username and email
         var userEntity = getUserEntityByUserId(userId);
+        validateNewUsernameAndEmail(
+                userEntity.getUsername(),
+                registrationRequest.getUsername(),
+                registrationRequest.getEmail());
+
         userEntity.setFirstName(registrationRequest.getFirstName());
         userEntity.setLastName(registrationRequest.getLastName());
         userEntity.setUsername(registrationRequest.getUsername());
@@ -278,41 +291,13 @@ public class UserServiceImpl implements UserService {
         userRepository.save(userEntity);
     }
 
-    //TODO: update method
-    @Override
-    public String uploadPhoto(String userId, MultipartFile file) {
-        var userEntity = getUserEntityByUserId(userId);
-        var photoUrl = photoFunction.apply(userId, file);
-        userEntity.setProfileImageURL(photoUrl + "?timestamp=" + System.currentTimeMillis());
-        userRepository.save(userEntity);
-        return photoUrl;
-    }
 
     @Override
     public User getUserById(Long id) {
-        UserEntity userEntity = userRepository.findById(id).orElseThrow(() -> new ApiException("User not found"));
-        log.info("find user in db");
-
-        User user = fromUserEntity(userEntity, userEntity.getRoles(), getUserCredentialById(userEntity.getId()));
-        log.info("mapping user");
-        return user;
+        UserEntity userEntity = getUserEntityById(id);
+        return fromUserEntity(userEntity, userEntity.getRoles(), getUserCredentialById(userEntity.getId()));
     }
 
-    private final BiFunction<String, MultipartFile, String> photoFunction = (id, file) -> {
-        var filename = id + ".png";
-        try {
-            var fileStorageLocation = Paths.get(FILE_STORAGE).toAbsolutePath().normalize();
-            if (!Files.exists(fileStorageLocation)) {
-                Files.createDirectories(fileStorageLocation);
-            }
-            Files.copy(file.getInputStream(), fileStorageLocation.resolve(filename), REPLACE_EXISTING);
-            return ServletUriComponentsBuilder
-                    .fromCurrentContextPath()
-                    .path("/user/photo/" + filename).toUriString();
-        } catch (Exception exception) {
-            throw new ApiException("Unable to save image");
-        }
-    };
 
     private boolean verifyCode(String qrCode, String qrCodeSecret) {
         TimeProvider timeProvider = new SystemTimeProvider();
@@ -321,36 +306,14 @@ public class UserServiceImpl implements UserService {
         if (codeVerifier.isValidCode(qrCodeSecret, qrCode)) {
             return true;
         } else {
-            throw new ApiException("Invalid QR code. Please try again");
+            log.error(INVALID_QR_CODE);
+            throw new ApiException(INVALID_QR_CODE);
         }
-
     }
-
-    private UserEntity getUserEntityByUserId(String userId) {
-        return userRepository.findUserEntityByUserId(userId)
-                .orElseThrow(() -> new ApiException("user not found"));
-    }
-
-    private UserEntity getUserEntityById(Long id) {
-        return userRepository.findById(id)
-                .orElseThrow(() -> new ApiException("User not found"));
-    }
-
-
-    private UserEntity getUserEntityByUsername(String username) {
-        return userRepository.findByUsernameIgnoreCase(username)
-                .orElseThrow(() -> new ApiException("User not found"));
-    }
-
-    private UserEntity getUserEntityByEmail(String email) {
-        return userRepository.findByEmailIgnoreCase(email)
-                .orElseThrow(() -> new ApiException("User not found"));
-    }
-
 
     private ConfirmationEntity getUserConfirmation(String key) {
         return confirmationRepository.findByKey(key)
-                .orElseThrow(() -> new ApiException("Not found"));
+                .orElseThrow(() -> new NotFoundException(CONFIRMATION_INFORMATION_NOT_FOUND));
     }
 
 
@@ -369,8 +332,8 @@ public class UserServiceImpl implements UserService {
         return UserEntity.builder()
                 .userId(UUID.randomUUID().toString())
                 .username(username)
-                .firstName(firstName)
-                .lastName(lastName)
+                .firstName(firstLetterUpper(firstName))
+                .lastName(firstLetterUpper(lastName))
                 .email(email)
                 .roles(role)
                 .lastLogin(LocalDateTime.now())
@@ -380,11 +343,73 @@ public class UserServiceImpl implements UserService {
                 .enabled(false)
                 .loginAttempts(0)
                 .qrCodeSecret(EMPTY)
-                .phone(EMPTY)
+                .phone(EMPTY)//TODO: fix
                 .bio(EMPTY)
-             //   .imageUrl(profileImageService.)
-               // .imageUrl("https://cdn-icons-png.flaticon.com/512/149/149071.png")
+                //   .imageUrl(profileImageService.)
+                // .imageUrl("https://cdn-icons-png.flaticon.com/512/149/149071.png")
                 .build();
+    }
+
+
+    private void validateNewUsernameAndEmail(String currentUsername, String newUsername, String newEmail) {
+        UserEntity userByNewUsername = findOptionalUserByUsername(newUsername).orElse(null);
+        UserEntity userByNewEmail = findOptionalUserByEmail(newEmail).orElse(null);
+        if (StringUtils.isNotBlank(currentUsername)) {
+            UserEntity currentUser = findOptionalUserByUsername(currentUsername).orElse(null);
+            if (currentUser == null) {
+                throw new NotFoundException(String.format(NO_USER_FOUND_BY_USERNAME, currentUsername));
+            }
+            if (userByNewUsername != null && !currentUser.getId().equals(userByNewUsername.getId())) {
+                throw new ExistException(USERNAME_ALREADY_EXISTS);
+            }
+            if (userByNewEmail != null && !currentUser.getId().equals(userByNewEmail.getId())) {
+                throw new ExistException(EMAIL_ALREADY_EXISTS);
+            }
+        } else {
+            if (userByNewUsername != null) {
+                throw new ExistException(USERNAME_ALREADY_EXISTS);
+            }
+            if (userByNewEmail != null) {
+                throw new ExistException(EMAIL_ALREADY_EXISTS);
+            }
+        }
+    }
+
+    private Optional<UserEntity> findOptionalUserByEmail(String email) {
+        return userRepository.findByEmail(email);
+    }
+
+    private UserEntity getUserEntityByEmail(String email) {
+        return findOptionalUserByEmail(email)
+                .orElseThrow(() -> new NotFoundException(String.format(NO_USER_FOUND_BY_EMAIL, email)));
+    }
+
+    private Optional<UserEntity> findOptionalUserByUsername(String username) {
+        return userRepository.findByUsername(username);
+    }
+
+    private UserEntity getUserEntityByUsername(String username) {
+        return findOptionalUserByUsername(username)
+                .orElseThrow(() -> new NotFoundException(String.format(NO_USER_FOUND_BY_USERNAME, username)));
+    }
+
+    private UserEntity getUserEntityById(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException(NO_USER_FOUND_BY_ID));
+    }
+
+
+    private String firstLetterUpper(String world) {
+        String[] words = world.split(" ");
+        StringBuilder result = new StringBuilder();
+        for (String word : words) {
+            if (word.length() > 0) {
+                char firstChar = Character.toUpperCase(word.charAt(0));
+                String capitalizedWord = firstChar + word.substring(1).toLowerCase();
+                result.append(capitalizedWord).append(" ");
+            }
+        }
+        return result.toString().trim();
     }
 
 
