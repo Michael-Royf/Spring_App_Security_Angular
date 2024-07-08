@@ -43,7 +43,7 @@ import java.util.UUID;
 
 import static com.michael.document.constant.Constants.*;
 import static com.michael.document.utils.UserUtils.*;
-import static com.michael.document.validation.UserValidation.verifyAccountStatus;
+import static com.michael.document.validations.UserValidation.verifyAccountStatus;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 
 
@@ -306,7 +306,6 @@ public class UserServiceImpl implements UserService {
         if (codeVerifier.isValidCode(qrCodeSecret, qrCode)) {
             return true;
         } else {
-            log.error(INVALID_QR_CODE);
             throw new ApiException(INVALID_QR_CODE);
         }
     }
@@ -411,6 +410,4 @@ public class UserServiceImpl implements UserService {
         }
         return result.toString().trim();
     }
-
-
 }

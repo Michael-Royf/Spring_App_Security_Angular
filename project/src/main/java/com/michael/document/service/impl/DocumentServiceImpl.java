@@ -1,11 +1,13 @@
 package com.michael.document.service.impl;
 
 import com.michael.document.entity.DocumentEntity;
+import com.michael.document.entity.UserEntity;
 import com.michael.document.exceptions.payload.ApiException;
 import com.michael.document.payload.response.DocumentResponse;
 import com.michael.document.repository.DocumentRepository;
 import com.michael.document.service.DocumentService;
 import com.michael.document.service.UserService;
+import com.michael.document.utils.DocumentUtil;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -49,13 +51,10 @@ public class DocumentServiceImpl implements DocumentService {
 
         List<DocumentResponse> documentResponses = documentsEntity
                 .stream()
-                .map(documentEntity -> fromDocumentEntity(
-                        documentEntity,
-                        userService.getUserById(documentEntity.getOwner().getId()),
-                        userService.getUserById(documentEntity.getOwner().getId())))
+                .map(DocumentUtil::convertDocumentEntityToResponse)
                 .collect(Collectors.toList());
         return new PageImpl<>(documentResponses,
-                documentsEntity.getPageable(),
+                pageable,
                 documentsEntity.getTotalElements());
     }
 
@@ -63,18 +62,30 @@ public class DocumentServiceImpl implements DocumentService {
     public Page<DocumentResponse> searchAllDocumentsByNameOrDescription(String query, int pageNo, int pageSize,
                                                                         String sortBy, String sortDir) {
         Pageable pageable = createPageable(pageNo, pageSize, sortBy, sortDir);
-//TODO: fix
-        List<DocumentEntity> documentsEntity = documentRepository.searchDocuments(query);
+
+        Page<DocumentEntity> documentsEntity = documentRepository.searchDocuments(query, pageable);
         List<DocumentResponse> documentResponses = documentsEntity
                 .stream()
-                .map(documentEntity -> fromDocumentEntity(
-                        documentEntity,
-                        userService.getUserById(documentEntity.getOwner().getId()),
-                        userService.getUserById(documentEntity.getOwner().getId())))
+                .map(DocumentUtil::convertDocumentEntityToResponse)
                 .collect(Collectors.toList());
         return new PageImpl<>(documentResponses,
                 pageable,
-                documentResponses.size());
+                documentsEntity.getTotalElements());
+    }
+
+    @Override
+    public Page<DocumentResponse> getAllUserDocument(String userId, int pageNo, int pageSize, String sortBy, String sortDir) {
+        Pageable pageable = createPageable(pageNo, pageSize, sortBy, sortDir);
+        UserEntity userEntity = userService.getUserEntityByUserId(userId);
+        Page<DocumentEntity> documentsEntity = documentRepository.findDocumentEntityByOwner(userEntity, pageable);
+
+        List<DocumentResponse> documentResponses = documentsEntity
+                .stream()
+                .map(DocumentUtil::convertDocumentEntityToResponse)
+                .collect(Collectors.toList());
+        return new PageImpl<>(documentResponses,
+                pageable,
+                documentsEntity.getTotalElements());
     }
 
 
@@ -102,12 +113,7 @@ public class DocumentServiceImpl implements DocumentService {
 
                 DocumentEntity savedDocument = documentRepository.save(documentEntity);
                 log.info("Saved document in database by name: {}", savedDocument.getName());
-                //TODO: fix
-                DocumentResponse newDocument = fromDocumentEntity(
-                        savedDocument,
-                        userService.getUserById(savedDocument.getOwner().getId()),
-                        userService.getUserById(savedDocument.getOwner().getId()));
-                listDocuments.add(newDocument);
+                listDocuments.add(convertDocumentEntityToResponse(documentEntity));
             }
             return listDocuments;
         } catch (Exception exception) {
@@ -116,25 +122,34 @@ public class DocumentServiceImpl implements DocumentService {
     }
 
     @Override
-    public void deleteDocument(String documentId) {
-        //TODO: check
-        //   DocumentEntity documentEntity = getDocumentEntity(documentId);
-        documentRepository.delete(getDocumentEntity(documentId));
+    public DocumentResponse updateDocument(String userId, String documentId,
+                                           String name, String description) {
+        DocumentEntity documentEntity = getDocumentEntity(documentId);
+        validateDocumentOwnerPermission(documentEntity, userId);
+        documentEntity.setName(name);
+        documentEntity.setDescription(description);
+        documentRepository.save(documentEntity);
+        return convertDocumentEntityToResponse(documentEntity);
     }
 
     @Override
-    public DocumentResponse getDocumentResponseByDocumentId(String documentId) {
+    public void deleteDocument(String userId, String documentId) {
         DocumentEntity documentEntity = getDocumentEntity(documentId);
-        return fromDocumentEntity(documentEntity,
-                userService.getUserById(documentEntity.getOwner().getId()),
-                userService.getUserById(documentEntity.getOwner().getId()));
+        validateDocumentOwnerPermission(documentEntity, userId);
+        documentRepository.delete(documentEntity);
+        log.info("Document with id {} was deleted", documentId);
+    }
+
+
+    @Override
+    public DocumentResponse getDocumentResponseByDocumentId(String documentId) {
+        return convertDocumentEntityToResponse(getDocumentEntity(documentId));
     }
 
     @Override
     public Resource getResource(String documentId) {
         try {
-            DocumentEntity documentEntity = getDocumentEntity(documentId);
-            return new ByteArrayResource(decompressData(documentEntity.getData()));
+            return new ByteArrayResource(decompressData(getDocumentEntity(documentId).getData()));
         } catch (Exception exception) {
             throw new ApiException(String.format(DOCUMENT_RETRIEVAL_ERROR, documentId));
         }
@@ -142,8 +157,14 @@ public class DocumentServiceImpl implements DocumentService {
 
     private DocumentEntity getDocumentEntity(String documentId) {
         return documentRepository.findByDocumentId(documentId)
-                .orElseThrow(() ->
-                        new ApiException(String.format(NO_DOCUMENT_FOUND_BY_ID, documentId)));
+                .orElseThrow(() -> new ApiException(String.format(NO_DOCUMENT_FOUND_BY_ID, documentId)));
+    }
+
+    // Проверяем, является ли текущий пользователь владельцем документа
+    private void validateDocumentOwnerPermission(DocumentEntity documentEntity, String userId) {
+        if (!documentEntity.getOwner().getUserId().equals(userId)) {
+            throw new ApiException("You do not have permission to delete this document");
+        }
     }
 
     private Pageable createPageable(int pageNo, int pageSize, String sortBy, String sortDir) {

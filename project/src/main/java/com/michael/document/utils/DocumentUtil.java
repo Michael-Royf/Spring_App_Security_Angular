@@ -1,28 +1,33 @@
 package com.michael.document.utils;
 
-import com.michael.document.domain.Document;
-import com.michael.document.domain.User;
 import com.michael.document.entity.DocumentEntity;
 import com.michael.document.payload.response.DocumentResponse;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.BeanUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+
 @Slf4j
 public class DocumentUtil {
 
-
-    //TODO: fix
-    public static DocumentResponse fromDocumentEntity(DocumentEntity documentEntity,
-                                                      User createdBy, User updatedBy) {
-        var document = new DocumentResponse();
-        BeanUtils.copyProperties(documentEntity, document);
-        document.setOwnerName(createdBy.getFirstName() + " " + createdBy.getLastName());
-        document.setOwnerEmail(createdBy.getEmail());
-        document.setOwnerPhone(createdBy.getPhone());
-        document.setOwnerLastLogin(createdBy.getLastLogin());
-        document.setUpdaterName(updatedBy.getFirstName() + " " + updatedBy.getLastName());
-        return document;
+    public static DocumentResponse convertDocumentEntityToResponse(DocumentEntity documentEntity) {
+        return DocumentResponse.builder()
+                .id(documentEntity.getId())
+                .documentId(documentEntity.getDocumentId())
+                .name(documentEntity.getName())
+                .description(documentEntity.getDescription())
+                .uri(documentEntity.getUri())
+                .size(documentEntity.getSize())
+                .formattedSize(documentEntity.getFormattedSize())
+                .icon(documentEntity.getIcon())
+                .extension(documentEntity.getExtension())
+                .referenceId(documentEntity.getReferenceId())
+                .createdAt(documentEntity.getCreatedAt())
+                .updatedAt(documentEntity.getUpdatedAt())
+                .ownerName(documentEntity.getOwner().getFirstName() + " " + documentEntity.getOwner().getLastName())
+                .ownerEmail(documentEntity.getOwner().getEmail())
+                .ownerPhone(documentEntity.getOwner().getPhone())
+                .ownerLastLogin(documentEntity.getOwner().getLastLogin())
+                .build();
     }
 
 
@@ -31,24 +36,19 @@ public class DocumentUtil {
     }
 
     public static String setIcon(String fileExtension) {
-        String extension = StringUtils.trimAllWhitespace(fileExtension);
+        var extension = StringUtils.trimAllWhitespace(fileExtension);
         if (extension.equalsIgnoreCase("DOC") || extension.equalsIgnoreCase("DOCX")) {
-       //     return "https://htmlstream.com/preview/front-dashboard-v2.2.1/assets/svg/brands/word-icon.svg";
-            return "";
+            return "https://htmlstream.com/preview/front-dashboard-v2.1.1/assets/svg/brands/word-icon.svg";
         }
         if (extension.equalsIgnoreCase("XLS") || extension.equalsIgnoreCase("XLSX")) {
-         //   return "https://htmlstream.com/preview/front-dashboard-v2.2.1/assets/svg/brands/excel-icon.svg";
-            return "";
+            return "https://htmlstream.com/preview/front-dashboard-v2.1.1/assets/svg/brands/excel-icon.svg";
         }
         if (extension.equalsIgnoreCase("PDF")) {
-         //   return "https://htmlstream.com/preview/front-dashboard-v2.2.1/assets/svg/brands/pdf-icon.svg";
-            return "";
+            return "https://htmlstream.com/preview/front-dashboard-v2.1.1/assets/svg/brands/pdf-icon.svg";
         } else {
-          //  return "https://htmlstream.com/preview/front-dashboard-v2.2.1/assets/svg/brands/word-icon.svg";
-            return "";
+            return "https://htmlstream.com/preview/front-dashboard-v2.1.1/assets/svg/brands/word-icon.svg";
         }
-
     }
-    //document service part 3
-
 }
+
+

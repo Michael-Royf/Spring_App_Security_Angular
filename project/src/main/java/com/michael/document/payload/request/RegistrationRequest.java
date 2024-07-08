@@ -1,8 +1,8 @@
 package com.michael.document.payload.request;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.michael.document.utils.validations.PasswordMatches;
-import com.michael.document.utils.validations.ValidPassword;
+import com.michael.document.validations.PasswordMatches;
+import com.michael.document.validations.ValidPassword;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotEmpty;
 import lombok.Getter;

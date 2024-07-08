@@ -1,4 +1,4 @@
-package com.michael.document.validation;
+package com.michael.document.validations;
 
 import com.michael.document.entity.UserEntity;
 import com.michael.document.exceptions.payload.ApiException;

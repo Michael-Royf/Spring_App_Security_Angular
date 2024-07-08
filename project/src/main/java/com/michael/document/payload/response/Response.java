@@ -13,7 +13,6 @@ import java.util.Map;
 @Builder
 @JsonInclude(JsonInclude.Include.NON_DEFAULT)
 public class Response {
-
     private String time;
     private int code;
     private String path;
@@ -21,5 +20,4 @@ public class Response {
     private String message;
     private String exception;
     private Map<?, ?> data;
-
 }

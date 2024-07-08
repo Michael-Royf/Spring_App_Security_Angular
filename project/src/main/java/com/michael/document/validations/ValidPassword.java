@@ -1,4 +1,4 @@
-package com.michael.document.utils.validations;
+package com.michael.document.validations;
 
 
 import jakarta.validation.Constraint;

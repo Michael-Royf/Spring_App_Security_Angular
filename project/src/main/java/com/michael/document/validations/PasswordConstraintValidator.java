@@ -1,4 +1,4 @@
-package com.michael.document.utils.validations;
+package com.michael.document.validations;
 
 import com.google.common.base.Joiner;
 import jakarta.validation.ConstraintValidator;

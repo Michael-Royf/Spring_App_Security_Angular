@@ -1,9 +1,11 @@
 package com.michael.document.controllers;
 
 import com.michael.document.domain.User;
+import com.michael.document.payload.request.UpdateDocument;
 import com.michael.document.payload.response.Response;
 import com.michael.document.service.DocumentService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
@@ -23,6 +25,7 @@ import java.util.Map;
 
 import static com.michael.document.constant.PaginationConstants.*;
 import static com.michael.document.utils.RequestUtils.getResponse;
+import static java.util.Collections.emptyMap;
 
 @RestController
 @RequestMapping("/document")
@@ -33,9 +36,9 @@ public class DocumentController {
     private final DocumentService documentService;
 
     @PostMapping("/upload")
-    public ResponseEntity<Response> saveDocument(@AuthenticationPrincipal User user,
-                                                 @RequestParam("files") List<MultipartFile> documents,
-                                                 HttpServletRequest request) {
+    public ResponseEntity<Response> saveDocuments(@AuthenticationPrincipal User user,
+                                                  @RequestParam("files") List<MultipartFile> documents,
+                                                  HttpServletRequest request) {
         var newDocuments = documentService.saveDocument(user.getUserId(), documents);
         return ResponseEntity.created(URI.create(""))
                 .body(getResponse(
@@ -46,8 +49,7 @@ public class DocumentController {
     }
 
     @GetMapping
-    public ResponseEntity<Response> getDocuments(@AuthenticationPrincipal User user,
-                                                 @RequestParam(value = "pageNo", defaultValue = DEFAULT_PAGE_NUMBER, required = false) int pageNo,
+    public ResponseEntity<Response> getDocuments(@RequestParam(value = "pageNo", defaultValue = DEFAULT_PAGE_NUMBER, required = false) int pageNo,
                                                  @RequestParam(value = "pageSize", defaultValue = DEFAULT_PAGE_SIZE, required = false) int pageSize,
                                                  @RequestParam(value = "sortBy", defaultValue = DEFAULT_SORT_BY, required = false) String sortBy,
                                                  @RequestParam(value = "sortDir", defaultValue = DEFAULT_SORT_DIRECTION, required = false) String sortDir,
@@ -60,9 +62,24 @@ public class DocumentController {
                 HttpStatus.OK));
     }
 
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<Response> getAllUserDocumentByUserId(@PathVariable("userId") String userId,
+                                                               @RequestParam(value = "pageNo", defaultValue = DEFAULT_PAGE_NUMBER, required = false) int pageNo,
+                                                               @RequestParam(value = "pageSize", defaultValue = DEFAULT_PAGE_SIZE, required = false) int pageSize,
+                                                               @RequestParam(value = "sortBy", defaultValue = DEFAULT_SORT_BY, required = false) String sortBy,
+                                                               @RequestParam(value = "sortDir", defaultValue = DEFAULT_SORT_DIRECTION, required = false) String sortDir,
+                                                               HttpServletRequest request) {
+        var documents = documentService.getAllUserDocument(userId,pageNo, pageSize, sortBy, sortDir);
+        return ResponseEntity.ok(getResponse(
+                request,
+                Map.of("documents", documents),
+                "Documents retrieved",
+                HttpStatus.OK));
+    }
+
+
     @GetMapping("/search/{query}")
-    public ResponseEntity<Response> searchDocuments(@AuthenticationPrincipal User user,
-                                                    @PathVariable("query") String query,
+    public ResponseEntity<Response> searchDocuments(@PathVariable("query") String query,
                                                     @RequestParam(value = "pageNo", defaultValue = DEFAULT_PAGE_NUMBER, required = false) int pageNo,
                                                     @RequestParam(value = "pageSize", defaultValue = DEFAULT_PAGE_SIZE, required = false) int pageSize,
                                                     @RequestParam(value = "sortBy", defaultValue = DEFAULT_SORT_BY, required = false) String sortBy,
@@ -77,8 +94,7 @@ public class DocumentController {
     }
 
     @GetMapping("/{documentId}")
-    public ResponseEntity<Response> getDocumentById(@AuthenticationPrincipal User user,
-                                                    @PathVariable("documentId") String documentId,
+    public ResponseEntity<Response> getDocumentById(@PathVariable("documentId") String documentId,
                                                     HttpServletRequest request) {
         var document = documentService.getDocumentResponseByDocumentId(documentId);
         return ResponseEntity.ok(getResponse(
@@ -89,25 +105,25 @@ public class DocumentController {
     }
 
 
-//    @PatchMapping
-//    public ResponseEntity<Response> updateDocument(@AuthenticationPrincipal User user,
-//                                                   @RequestBody @Valid UpdateDocument updateDocument,
-//                                                   HttpServletRequest request) {
-//        var document = documentService.updateDocument(
-//                updateDocument.getDocumentId(),
-//                updateDocument.getName(),
-//                updateDocument.getDescription());
-//        return ResponseEntity.ok(getResponse(
-//                request,
-//                Map.of("document", document),
-//                "Document updated",
-//                HttpStatus.OK));
-//    }
+    @PatchMapping("/update")
+    public ResponseEntity<Response> updateDocument(@AuthenticationPrincipal User user,
+                                                   @RequestBody @Valid UpdateDocument updateDocument,
+                                                   HttpServletRequest request) {
+        var document = documentService.updateDocument(
+                user.getUserId(),
+                updateDocument.getDocumentId(),
+                updateDocument.getName(),
+                updateDocument.getDescription());
+        return ResponseEntity.ok(getResponse(
+                request,
+                Map.of("document", document),
+                "Document updated",
+                HttpStatus.OK));
+    }
 
     @Transactional(readOnly = true)
     @GetMapping("/download/{documentId}")
-    public ResponseEntity<Resource> downloadDocument(@AuthenticationPrincipal User user,
-                                                     @PathVariable("documentId") String documentId,
+    public ResponseEntity<Resource> downloadDocument(@PathVariable("documentId") String documentId,
                                                      HttpServletRequest request) throws IOException {
         var resource = documentService.getResource(documentId);
         var httpHeader = new HttpHeaders();
@@ -118,4 +134,17 @@ public class DocumentController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + documentId + "\"")
                 .body(resource);
     }
+
+    @DeleteMapping("delete/{documentId}")
+    public ResponseEntity deleteDocument(@AuthenticationPrincipal User user,
+                                         @PathVariable String documentId,
+                                         HttpServletRequest request) {
+        documentService.deleteDocument(user.getUserId(), documentId);
+        return ResponseEntity.ok(getResponse(
+                request,
+                emptyMap(),
+                "Document was deleted",
+                HttpStatus.OK));
+    }
+
 }

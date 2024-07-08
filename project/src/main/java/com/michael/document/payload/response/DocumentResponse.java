@@ -26,6 +26,6 @@ public class DocumentResponse {
     private String ownerName;
     private String ownerEmail;
     private String ownerPhone;
-    private String ownerLastLogin;
-    private String updaterName;
+    private LocalDateTime ownerLastLogin;
+  //  private String updaterName;
 }

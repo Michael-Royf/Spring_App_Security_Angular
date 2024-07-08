@@ -38,9 +38,7 @@ public class ApiAuthenticationProvider implements AuthenticationProvider {
                 return ApiAuthentication.authenticated(user, userPrincipal.getAuthorities());
             } else throw new BadCredentialsException("Email and/or password incorrect. Please try again");
         }
-
         throw new ApiException("Unable to authentication");
-
     }
 
     private final Function<Authentication, ApiAuthentication> apiAuthenticationFunction =

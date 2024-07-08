@@ -1,4 +1,4 @@
-package com.michael.document.utils.validations;
+package com.michael.document.validations;
 
 import com.michael.document.payload.request.RegistrationRequest;
 import com.michael.document.payload.request.ResetPasswordRequest;
@@ -15,8 +15,8 @@ public class PasswordMatchesValidator implements ConstraintValidator<PasswordMat
     @Override
     public boolean isValid(Object obj, ConstraintValidatorContext context) {
         if (obj instanceof RegistrationRequest) {
-            RegistrationRequest reqistrationRequest = (RegistrationRequest) obj;
-            return reqistrationRequest.getPassword().equals(reqistrationRequest.getConfirmationPassword());
+            RegistrationRequest registrationRequest = (RegistrationRequest) obj;
+            return registrationRequest.getPassword().equals(registrationRequest.getConfirmationPassword());
         } else if (obj instanceof UpdatePasswordRequest) {
             UpdatePasswordRequest updatePasswordRequest = (UpdatePasswordRequest) obj;
             return updatePasswordRequest.getNewPassword().equals(updatePasswordRequest.getConfirmationPassword());

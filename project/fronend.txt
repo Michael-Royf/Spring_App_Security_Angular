@@ -1,0 +1,16 @@
+ npm create vite@latest
+ cd securedocapp
+code .; npm install; npm run dev
+npm i @hookform/resolvers @reduxjs/toolkit react-hook-form react-redux react-router-dom react-toastify redux-logger zod
+npm install @reduxjs/toolkit
+
+
+
+
+
+
+
+
+
+https://vitejs.dev/guide/
+https://redux.js.org/
