@@ -3,6 +3,7 @@ package com.michael.document.payload.response;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -20,6 +21,9 @@ public class DocumentResponse {
     private String icon;
     private String extension;
     private String referenceId;
+    private Double documentRating;
+    private Long downloadCount;
+    private int totalLikes;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     //
@@ -27,5 +31,6 @@ public class DocumentResponse {
     private String ownerEmail;
     private String ownerPhone;
     private LocalDateTime ownerLastLogin;
-  //  private String updaterName;
+    private List<FeedbackResponse> feedbackResponses;
+    //  private String updaterName;
 }

@@ -7,7 +7,7 @@ import com.michael.document.payload.response.DocumentResponse;
 import com.michael.document.repository.DocumentRepository;
 import com.michael.document.service.DocumentService;
 import com.michael.document.service.UserService;
-import com.michael.document.utils.DocumentUtil;
+import com.michael.document.utils.DocumentUtils;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,7 +20,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static com.michael.document.utils.DocumentUtil.*;
+import static com.michael.document.utils.DocumentUtils.*;
 import static com.michael.document.utils.FileCompressor.compressData;
 import static com.michael.document.utils.FileCompressor.decompressData;
 import static org.apache.commons.io.FileUtils.byteCountToDisplaySize;
@@ -44,56 +44,9 @@ public class DocumentServiceImpl implements DocumentService {
 
 
     @Override
-    public Page<DocumentResponse> getAllDocuments(int pageNo, int pageSize,
-                                                  String sortBy, String sortDir) {
-        Pageable pageable = createPageable(pageNo, pageSize, sortBy, sortDir);
-        Page<DocumentEntity> documentsEntity = documentRepository.findAll(pageable);
-
-        List<DocumentResponse> documentResponses = documentsEntity
-                .stream()
-                .map(DocumentUtil::convertDocumentEntityToResponse)
-                .collect(Collectors.toList());
-        return new PageImpl<>(documentResponses,
-                pageable,
-                documentsEntity.getTotalElements());
-    }
-
-    @Override
-    public Page<DocumentResponse> searchAllDocumentsByNameOrDescription(String query, int pageNo, int pageSize,
-                                                                        String sortBy, String sortDir) {
-        Pageable pageable = createPageable(pageNo, pageSize, sortBy, sortDir);
-
-        Page<DocumentEntity> documentsEntity = documentRepository.searchDocuments(query, pageable);
-        List<DocumentResponse> documentResponses = documentsEntity
-                .stream()
-                .map(DocumentUtil::convertDocumentEntityToResponse)
-                .collect(Collectors.toList());
-        return new PageImpl<>(documentResponses,
-                pageable,
-                documentsEntity.getTotalElements());
-    }
-
-    @Override
-    public Page<DocumentResponse> getAllUserDocument(String userId, int pageNo, int pageSize, String sortBy, String sortDir) {
-        Pageable pageable = createPageable(pageNo, pageSize, sortBy, sortDir);
-        UserEntity userEntity = userService.getUserEntityByUserId(userId);
-        Page<DocumentEntity> documentsEntity = documentRepository.findDocumentEntityByOwner(userEntity, pageable);
-
-        List<DocumentResponse> documentResponses = documentsEntity
-                .stream()
-                .map(DocumentUtil::convertDocumentEntityToResponse)
-                .collect(Collectors.toList());
-        return new PageImpl<>(documentResponses,
-                pageable,
-                documentsEntity.getTotalElements());
-    }
-
-
-    @Override
     public Collection<DocumentResponse> saveDocument(String userId, List<MultipartFile> documents) {
         List<DocumentResponse> listDocuments = new ArrayList<>();
         var userEntity = userService.getUserEntityByUserId(userId);
-
         try {
             for (MultipartFile document : documents) {
                 var filename = cleanPath(Objects.requireNonNull(document.getOriginalFilename()));
@@ -109,8 +62,11 @@ public class DocumentServiceImpl implements DocumentService {
                         .formattedSize(byteCountToDisplaySize(document.getSize()))
                         .icon(setIcon(getExtension(filename)))
                         .owner(userEntity)
+                        .feedbacks(Collections.EMPTY_LIST)
+                        .totalLikes(0)
+                        .likedUsers(Collections.EMPTY_SET)
+                        .downloadCount(0L)
                         .build();
-
                 DocumentEntity savedDocument = documentRepository.save(documentEntity);
                 log.info("Saved document in database by name: {}", savedDocument.getName());
                 listDocuments.add(convertDocumentEntityToResponse(documentEntity));
@@ -120,6 +76,72 @@ public class DocumentServiceImpl implements DocumentService {
             throw new ApiException(UNABLE_TO_SAVE_DOCUMENTS);
         }
     }
+
+
+    @Override
+    public Page<DocumentResponse> getAllDocuments(int pageNo, int pageSize,
+                                                  String sortBy, String sortDir) {
+        Pageable pageable = createPageable(pageNo, pageSize, sortBy, sortDir);
+        Page<DocumentEntity> documentsEntity = documentRepository.findAll(pageable);
+
+        List<DocumentResponse> documentResponses = documentsEntity
+                .stream()
+                .map(DocumentUtils::convertDocumentEntityToResponse)
+                .collect(Collectors.toList());
+        return new PageImpl<>(documentResponses,
+                pageable,
+                documentsEntity.getTotalElements());
+    }
+
+    @Override
+    public Page<DocumentResponse> searchAllDocumentsByNameOrDescription(String query, int pageNo, int pageSize,
+                                                                        String sortBy, String sortDir) {
+        Pageable pageable = createPageable(pageNo, pageSize, sortBy, sortDir);
+
+        Page<DocumentEntity> documentsEntity = documentRepository.searchDocuments(query, pageable);
+        List<DocumentResponse> documentResponses = documentsEntity
+                .stream()
+                .map(DocumentUtils::convertDocumentEntityToResponse)
+                .collect(Collectors.toList());
+        return new PageImpl<>(documentResponses,
+                pageable,
+                documentsEntity.getTotalElements());
+    }
+
+    @Override
+    public Page<DocumentResponse> getAllUserDocument(String userId, int pageNo, int pageSize, String sortBy, String sortDir) {
+        Pageable pageable = createPageable(pageNo, pageSize, sortBy, sortDir);
+        UserEntity userEntity = userService.getUserEntityByUserId(userId);
+        Page<DocumentEntity> documentsEntity = documentRepository.findDocumentEntityByOwner(userEntity, pageable);
+
+        List<DocumentResponse> documentResponses = documentsEntity
+                .stream()
+                .map(DocumentUtils::convertDocumentEntityToResponse)
+                .collect(Collectors.toList());
+        return new PageImpl<>(documentResponses,
+                pageable,
+                documentsEntity.getTotalElements());
+    }
+
+    @Override
+    public DocumentResponse toggleLike(String username, String documentId) {
+        var document = getDocumentEntity(documentId);
+        Optional<String> userLiked = document.getLikedUsers()
+                .stream()
+                .filter(u -> u.equals(username))
+                .findAny();
+
+        if (userLiked.isPresent()) {
+            document.setTotalLikes(document.getTotalLikes() - 1);
+            document.getLikedUsers().remove(username);
+        } else {
+            document.setTotalLikes(document.getTotalLikes() + 1);
+            document.getLikedUsers().add(username);
+        }
+        document = documentRepository.save(document);
+        return convertDocumentEntityToResponse(document);
+    }
+
 
     @Override
     public DocumentResponse updateDocument(String userId, String documentId,
@@ -147,12 +169,8 @@ public class DocumentServiceImpl implements DocumentService {
     }
 
     @Override
-    public Resource getResource(String documentId) {
-        try {
-            return new ByteArrayResource(decompressData(getDocumentEntity(documentId).getData()));
-        } catch (Exception exception) {
-            throw new ApiException(String.format(DOCUMENT_RETRIEVAL_ERROR, documentId));
-        }
+    public DocumentEntity getDocumentEntityByDocumentId(String documentId) {
+        return getDocumentEntity(documentId);
     }
 
     private DocumentEntity getDocumentEntity(String documentId) {
@@ -160,10 +178,23 @@ public class DocumentServiceImpl implements DocumentService {
                 .orElseThrow(() -> new ApiException(String.format(NO_DOCUMENT_FOUND_BY_ID, documentId)));
     }
 
+    @Override
+    public Resource getResource(String documentId) {
+        var documentEntity = getDocumentEntity(documentId);
+        try {
+            ByteArrayResource byteArrayResource = new ByteArrayResource(decompressData(documentEntity.getData()));
+            documentEntity.setDownloadCount(documentEntity.getDownloadCount() + 1);
+            documentRepository.save(documentEntity);
+            return byteArrayResource;
+        } catch (Exception exception) {
+            throw new ApiException(String.format(DOCUMENT_RETRIEVAL_ERROR, documentId));
+        }
+    }
+
     // Проверяем, является ли текущий пользователь владельцем документа
     private void validateDocumentOwnerPermission(DocumentEntity documentEntity, String userId) {
         if (!documentEntity.getOwner().getUserId().equals(userId)) {
-            throw new ApiException("You do not have permission to delete this document");
+            throw new ApiException("You do not have permission to delete or update this document");
         }
     }
 

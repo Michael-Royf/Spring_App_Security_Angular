@@ -7,6 +7,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import org.springframework.util.AlternativeJdkIdGenerator;
 
@@ -27,10 +28,10 @@ public abstract class Auditable {
 
     private String referenceId = new AlternativeJdkIdGenerator().generateId().toString();
 
-    @NotNull
-    private Long createdBy;
-    @NotNull
-    private Long updatedBy;
+//    @NotNull
+//    private Long createdBy;
+//    @NotNull
+//    private Long updatedBy;
 
     @NotNull
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -39,7 +40,7 @@ public abstract class Auditable {
 
     @NotNull
     @Column(name = "updated_at", nullable = false)
-    @CreatedDate //TODO:
+    @LastModifiedDate
     private LocalDateTime updatedAt;
 
     @PrePersist
@@ -49,8 +50,8 @@ public abstract class Auditable {
 //            throw new ApiException("Cannot persist entity without user ID in RequestContext for this thread");
 //        }
         setCreatedAt(LocalDateTime.now());
-        setCreatedBy(userId);
-        setUpdatedBy(userId);
+//        setCreatedBy(userId);
+//        setUpdatedBy(userId);
         setUpdatedAt(LocalDateTime.now());
     }
 
@@ -61,7 +62,7 @@ public abstract class Auditable {
 //            throw new ApiException("Cannot update entity without user ID in RequestContext for this thread");
 //        }
 
-        setUpdatedBy(userId);
+    //    setUpdatedBy(userId);
         setUpdatedAt(LocalDateTime.now());
     }
 

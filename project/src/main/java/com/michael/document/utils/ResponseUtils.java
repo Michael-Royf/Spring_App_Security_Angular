@@ -3,6 +3,8 @@ package com.michael.document.utils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.exc.MismatchedInputException;
 import com.michael.document.exceptions.payload.ApiException;
+import com.michael.document.exceptions.payload.ExistException;
+import com.michael.document.exceptions.payload.NotFoundException;
 import com.michael.document.payload.response.Response;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -16,14 +18,56 @@ import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 
-import static java.time.LocalTime.now;
 import static java.util.Collections.emptyMap;
 import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.apache.commons.lang3.exception.ExceptionUtils.getRootCauseMessage;
 import static org.springframework.http.HttpStatus.*;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
-public class RequestUtils {
+public class ResponseUtils {
+
+    //нормальный ответ
+    public static Response getResponse(HttpServletRequest request,
+                                       Map<?, ?> data,
+                                       String message,
+                                       HttpStatus status) {
+        return Response.builder()
+                .time(LocalDateTime.now().toString())
+                .code(status.value())
+                .path(request.getRequestURI())
+                .status(HttpStatus.valueOf(status.value()))
+                .message(message)
+                .exception(EMPTY)
+                .data(data)
+                .build();
+    }
+
+
+    private static final BiFunction<Exception, HttpStatus, String> errorReason =
+            (exception, httpStatus) -> {
+                if (httpStatus.isSameCodeAs(FORBIDDEN)) {
+                    return "You do not have enough permission";
+                }
+                if (httpStatus.isSameCodeAs(UNAUTHORIZED)) {
+                    return "You are not logged in";
+                }
+                if (exception instanceof DisabledException ||
+                        exception instanceof LockedException ||
+                        exception instanceof BadCredentialsException ||
+                        exception instanceof CredentialsExpiredException ||
+                        exception instanceof ApiException ||
+                        exception instanceof ExistException ||
+                        exception instanceof NotFoundException
+                ) {
+                    return exception.getMessage();
+                }
+                if (httpStatus.is5xxServerError()) {
+                    return "An internal server error occurred";
+                } else {
+                    return "An error occurred. Please try again";
+                }
+            };
+
 
     private static final BiConsumer<HttpServletResponse, Response> writeResponse =
             ((httpServletResponse, response) -> {
@@ -37,41 +81,6 @@ public class RequestUtils {
             });
 
 
-    private static final BiFunction<Exception, HttpStatus, String> errorReason =
-            (exception, httpStatus) -> {
-                if (httpStatus.isSameCodeAs(FORBIDDEN)) {
-                    return "You do not have enough permission";
-                }
-                if (httpStatus.isSameCodeAs(UNAUTHORIZED)) {
-                    return "You are not logged in";
-                }
-                if (exception instanceof DisabledException || exception instanceof LockedException || exception instanceof BadCredentialsException ||
-                        exception instanceof CredentialsExpiredException || exception instanceof ApiException) {
-                    return exception.getMessage();
-                }
-                if (httpStatus.is5xxServerError()) {
-                    return "An internal server error occurred";
-                } else {
-                    return "An error occurred. Please try again";
-                }
-            };
-
-
-    public static Response getResponse(HttpServletRequest request,
-                                       Map<?, ?> data,
-                                       String message,
-                                       HttpStatus status) {
-        return new Response(
-                LocalDateTime.now().toString(),
-                status.value(),
-                request.getRequestURI(),
-                HttpStatus.valueOf(status.value()),
-                message,
-                EMPTY,
-                data
-        );
-    }
-
     public static void handleErrorResponse(HttpServletRequest request,
                                            HttpServletResponse response,
                                            Exception exception) {
@@ -84,23 +93,30 @@ public class RequestUtils {
         } else if (exception instanceof MismatchedInputException) {
             Response apiResponse = getErrorResponse(request, response, exception, BAD_REQUEST);
             writeResponse.accept(response, apiResponse);
-        } else if (exception instanceof DisabledException || exception instanceof LockedException || exception instanceof BadCredentialsException ||
+        } else if (exception instanceof DisabledException || exception instanceof LockedException ||
+                exception instanceof BadCredentialsException ||
                 exception instanceof CredentialsExpiredException || exception instanceof ApiException) {
             Response apiResponse = getErrorResponse(request, response, exception, BAD_REQUEST);
             writeResponse.accept(response, apiResponse);
-        }else{
-            Response apiResponse =getErrorResponse(request, response, exception, INTERNAL_SERVER_ERROR);
+        } else {
+            Response apiResponse = getErrorResponse(request, response, exception, INTERNAL_SERVER_ERROR);
             writeResponse.accept(response, apiResponse);
         }
-
     }
-
 
     public static Response handleErrorResponse(String message,
                                                String exception,
                                                HttpServletRequest request,
                                                HttpStatusCode status) {
-        return new Response(now().toString(), status.value(), request.getRequestURI(), HttpStatus.valueOf(status.value()), message, exception, emptyMap());
+        return Response.builder()
+                .time(LocalDateTime.now().toString())
+                .code(status.value())
+                .path(request.getRequestURI())
+                .status(HttpStatus.valueOf(status.value()))
+                .message(message)
+                .exception(exception)
+                .data(emptyMap())
+                .build();
     }
 
 
@@ -110,13 +126,15 @@ public class RequestUtils {
                                              HttpStatus status) {
         response.setContentType(APPLICATION_JSON_VALUE);
         response.setStatus(status.value());
-        return new Response(
-                LocalDateTime.now().toString(),
-                status.value(),
-                request.getRequestURI(),
-                HttpStatus.valueOf(status.value()),
-                errorReason.apply(exception, status),
-                getRootCauseMessage(exception),
-                emptyMap());
+
+        return Response.builder()
+                .time(LocalDateTime.now().toString())
+                .code(status.value())
+                .path(request.getRequestURI())
+                .status(HttpStatus.valueOf(status.value()))
+                .message(errorReason.apply(exception, status))
+                .exception(getRootCauseMessage(exception))
+                .data(emptyMap())
+                .build();
     }
 }

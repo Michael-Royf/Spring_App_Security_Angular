@@ -23,7 +23,6 @@ import org.springframework.security.authentication.CredentialsExpiredException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.LockedException;
 import org.springframework.transaction.TransactionSystemException;
-import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -37,7 +36,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static com.michael.document.utils.RequestUtils.handleErrorResponse;
+import static com.michael.document.utils.ResponseUtils.handleErrorResponse;
 import static org.apache.commons.lang3.exception.ExceptionUtils.getRootCauseMessage;
 import static org.springframework.http.HttpStatus.*;
 

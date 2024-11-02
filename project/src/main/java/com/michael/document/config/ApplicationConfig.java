@@ -9,15 +9,12 @@ import org.modelmapper.ModelMapper;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
-import org.springframework.scheduling.annotation.EnableAsync;
+import org.springframework.data.domain.AuditorAware;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 
 @Configuration
-@EnableJpaAuditing
-@EnableAsync
 public class ApplicationConfig {
 
     @Bean
@@ -28,7 +25,7 @@ public class ApplicationConfig {
     @Bean
     CommandLineRunner commandLineRunner(RoleRepository roleRepository) {
         return args -> {
-            RequestContext.setUserId(0l);
+       //     RequestContext.setUserId(0l);
             if (roleRepository.count() == 0) {
                 var userRole = new RoleEntity();
                 userRole.setName(Authority.USER.name());
@@ -41,13 +38,13 @@ public class ApplicationConfig {
                 roleRepository.save(adminRole);
 
                 var superAdminRole = new RoleEntity();
-                userRole.setName(Authority.SUPER_ADMIN.name());
-                userRole.setAuthority(Authority.SUPER_ADMIN);
+                superAdminRole.setName(Authority.SUPER_ADMIN.name());
+                superAdminRole.setAuthority(Authority.SUPER_ADMIN);
                 roleRepository.save(superAdminRole);
 
                 var managerRole = new RoleEntity();
-                userRole.setName(Authority.MANAGER.name());
-                userRole.setAuthority(Authority.MANAGER);
+                managerRole.setName(Authority.MANAGER.name());
+                managerRole.setAuthority(Authority.MANAGER);
                 roleRepository.save(managerRole);
             }
 
@@ -59,4 +56,10 @@ public class ApplicationConfig {
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder(Constants.STRENGTH);
     }
+
+//    @Bean
+//    public AuditorAware<Long> auditorAware() {
+//        return new ApplicationAuditAware();
+//    }
+
 }

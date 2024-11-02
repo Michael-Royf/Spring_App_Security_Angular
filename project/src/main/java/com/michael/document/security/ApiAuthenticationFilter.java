@@ -24,8 +24,8 @@ import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import java.io.IOException;
 import java.util.Map;
 
-import static com.michael.document.utils.RequestUtils.getResponse;
-import static com.michael.document.utils.RequestUtils.handleErrorResponse;
+import static com.michael.document.utils.ResponseUtils.getResponse;
+import static com.michael.document.utils.ResponseUtils.handleErrorResponse;
 import static org.springframework.http.HttpMethod.POST;
 import static org.springframework.http.HttpStatus.OK;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;

@@ -7,10 +7,11 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.security.Principal;
 import java.util.Collection;
 
 @RequiredArgsConstructor
-public class UserPrincipal implements UserDetails {
+public class UserPrincipal implements UserDetails, Principal {
     @Getter
     private final User user;
     private final CredentialEntity credentialEntity;
@@ -50,5 +51,12 @@ public class UserPrincipal implements UserDetails {
     @Override
     public boolean isEnabled() {
         return user.isEnabled();
+    }
+
+
+    //for principal
+    @Override
+    public String getName() {
+        return user.getEmail();
     }
 }

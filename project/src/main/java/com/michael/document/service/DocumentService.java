@@ -1,5 +1,6 @@
 package com.michael.document.service;
 
+import com.michael.document.entity.DocumentEntity;
 import com.michael.document.payload.response.DocumentResponse;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
@@ -18,6 +19,8 @@ public interface DocumentService {
 
     DocumentResponse getDocumentResponseByDocumentId(String documentId);
 
+    DocumentEntity getDocumentEntityByDocumentId(String documentId);
+
     Resource getResource(String documentId);
 
     Page<DocumentResponse> getAllDocuments(int pageNo, int pageSize, String sortBy, String sortDir);
@@ -26,6 +29,5 @@ public interface DocumentService {
 
     Page<DocumentResponse>  getAllUserDocument(String userId, int pageNo, int pageSize, String sortBy, String sortDir);
 
-
-
+    DocumentResponse toggleLike(String username, String documentId);
 }

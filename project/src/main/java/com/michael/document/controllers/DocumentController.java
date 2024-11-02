@@ -2,6 +2,7 @@ package com.michael.document.controllers;
 
 import com.michael.document.domain.User;
 import com.michael.document.payload.request.UpdateDocument;
+import com.michael.document.payload.response.DocumentResponse;
 import com.michael.document.payload.response.Response;
 import com.michael.document.service.DocumentService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -24,7 +25,7 @@ import java.util.List;
 import java.util.Map;
 
 import static com.michael.document.constant.PaginationConstants.*;
-import static com.michael.document.utils.RequestUtils.getResponse;
+import static com.michael.document.utils.ResponseUtils.getResponse;
 import static java.util.Collections.emptyMap;
 
 @RestController
@@ -69,7 +70,7 @@ public class DocumentController {
                                                                @RequestParam(value = "sortBy", defaultValue = DEFAULT_SORT_BY, required = false) String sortBy,
                                                                @RequestParam(value = "sortDir", defaultValue = DEFAULT_SORT_DIRECTION, required = false) String sortDir,
                                                                HttpServletRequest request) {
-        var documents = documentService.getAllUserDocument(userId,pageNo, pageSize, sortBy, sortDir);
+        var documents = documentService.getAllUserDocument(userId, pageNo, pageSize, sortBy, sortDir);
         return ResponseEntity.ok(getResponse(
                 request,
                 Map.of("documents", documents),
@@ -147,4 +148,17 @@ public class DocumentController {
                 HttpStatus.OK));
     }
 
+
+    @PatchMapping("/toggle_like/{document_id}")
+    public ResponseEntity<Response> toggleLike(@AuthenticationPrincipal User user,
+                                               @PathVariable("document_id") String documentId,
+                                               HttpServletRequest request) {
+        DocumentResponse documentResponse = documentService.toggleLike(user.getUsername(), documentId);
+        return ResponseEntity.ok()
+                .body(getResponse(
+                        request,
+                        Map.of("document", documentResponse),
+                        "Updated successfully.",
+                        HttpStatus.OK));
+    }
 }

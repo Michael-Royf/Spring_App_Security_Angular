@@ -20,6 +20,7 @@ import static com.michael.document.utils.emailUtils.EmailUtils.getResetPasswordM
 public class EmailServiceImpl implements EmailService {
 
     private final JavaMailSender mailSender;
+
 //    @Value("${spring.mail.verify.host}")
     private String host = "http://localhost:8080";
  //   @Value("${spring.mail.username}")

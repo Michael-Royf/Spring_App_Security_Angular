@@ -5,8 +5,12 @@ import com.michael.document.entity.base.Auditable;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Types;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -30,6 +34,12 @@ public class DocumentEntity extends Auditable {
     private String formattedSize;
     private String icon;
     private String extension; //расширение
+    private Long downloadCount;
+    private  int totalLikes;
+    @Column(name = "liked_users")
+    @ElementCollection(targetClass = String.class)
+    private Set<String> likedUsers = new HashSet<>();
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", referencedColumnName = "id"
 //            ,
@@ -38,4 +48,21 @@ public class DocumentEntity extends Auditable {
 //                    value = ConstraintMode.CONSTRAINT)
     )
     private UserEntity owner;
+
+    @OneToMany(mappedBy = "document")
+    List<FeedbackEntity> feedbacks;
+
+
+    @Transactional
+    public double getRate() {
+        if (feedbacks == null || feedbacks.isEmpty()) {
+            return 0.0;
+        }
+        var rate = this.feedbacks
+                .stream()
+                .mapToDouble(FeedbackEntity::getDocumentRating)
+                .average()
+                .orElse(0.0);
+        return Math.round(rate * 10.0) / 10.0;
+    }
 }

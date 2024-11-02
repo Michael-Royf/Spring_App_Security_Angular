@@ -1,15 +1,23 @@
 package com.michael.document.utils;
 
+
 import com.michael.document.entity.DocumentEntity;
+import com.michael.document.entity.FeedbackEntity;
 import com.michael.document.payload.response.DocumentResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.StringUtils;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import java.util.List;
+
+import static com.michael.document.utils.FeedbackUtils.mappingListFeedbackEntityToFeedbackResponse;
+
+
 @Slf4j
-public class DocumentUtil {
+public class DocumentUtils {
 
     public static DocumentResponse convertDocumentEntityToResponse(DocumentEntity documentEntity) {
+        List<FeedbackEntity> feedbackEntities = documentEntity.getFeedbacks();
         return DocumentResponse.builder()
                 .id(documentEntity.getId())
                 .documentId(documentEntity.getDocumentId())
@@ -19,14 +27,18 @@ public class DocumentUtil {
                 .size(documentEntity.getSize())
                 .formattedSize(documentEntity.getFormattedSize())
                 .icon(documentEntity.getIcon())
+                .documentRating(documentEntity.getRate())
                 .extension(documentEntity.getExtension())
                 .referenceId(documentEntity.getReferenceId())
                 .createdAt(documentEntity.getCreatedAt())
                 .updatedAt(documentEntity.getUpdatedAt())
-                .ownerName(documentEntity.getOwner().getFirstName() + " " + documentEntity.getOwner().getLastName())
+                .ownerName(documentEntity.getOwner().getFullName())
                 .ownerEmail(documentEntity.getOwner().getEmail())
                 .ownerPhone(documentEntity.getOwner().getPhone())
                 .ownerLastLogin(documentEntity.getOwner().getLastLogin())
+                .feedbackResponses(mappingListFeedbackEntityToFeedbackResponse(feedbackEntities))
+               .totalLikes(documentEntity.getTotalLikes())
+                .downloadCount(documentEntity.getDownloadCount())
                 .build();
     }
 

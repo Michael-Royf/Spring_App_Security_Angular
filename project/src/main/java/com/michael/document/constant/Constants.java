@@ -88,20 +88,10 @@ public class Constants {
     //"https://cdn-icons-png.flaticon.com/512/149/149071.png"
 
 
-
-
     //email
     public static final String NEW_USER_ACCOUNT_VERIFICATION = "New User Account Verification";
     public static final String PASSWORD_RESET_REQUEST = "Reset Password Request";
     public static final String UNABLE_TO_SEND_EMAIL = "Unable to send email";
 
-
-
-    //public static final String FILE_STORAGE = "C://Users/micha/Downloads/uploads/";
-//    public static final String SELECT_DOCUMENTS_QUERY = "select doc.id, doc.document_id, doc.name, doc.description, doc.uri, doc.icon, doc.size, doc.formatted_size, doc.extension, doc.reference_id,  doc.created_at, doc.updated_at, CONCAT(owner.first_name, '', owner.last_name) AS owner_name, owner.email AS owner_email,owner.phone AS owner_phone, owner.last_login AS owner_last_login, CONCAT(updater.first_name, '', updater.last_name) AS updater_name FROM documents  doc JOIN users owner ON owner.id = doc.created_by JOIN users updater ON updater.id = doc.updated_by";
-//    public static final String  SELECT_COUNT_DOCUMENTS_QUERY ="SELECT COUNT(*) FROM documents";
-//    public static final String SELECT_DOCUMENTS_BY_NAME_QUERY = "select doc.id, doc.document_id, doc.name, doc.description, doc.uri, doc.icon, doc.size, doc.formatted_size, doc.extension, doc.reference_id,  doc.created_at, doc.updated_at, CONCAT(owner.first_name, '', owner.last_name) AS owner_name, owner.email AS owner_email,owner.phone AS owner_phone, owner.last_login AS owner_last_login, CONCAT(updater.first_name, '', updater.last_name) AS updater_name FROM documents  doc JOIN users owner ON owner.id = doc.created_by JOIN users updater ON updater.id = doc.updated_by WHERE name ~* :documentName";
-//    public static final String  SELECT_COUNT_DOCUMENTS_BY_NAME_QUERY ="SELECT COUNT(*) FROM documents WHERE name ~* :documentName";
-//    public static final String SELECT_DOCUMENT_QUERY = "select doc.id, doc.document_id, doc.name, doc.description, doc.uri, doc.icon, doc.size, doc.formatted_size, doc.extension, doc.reference_id,  doc.created_at, doc.updated_at, CONCAT(owner.first_name, '', owner.last_name) AS owner_name, owner.email AS owner_email,owner.phone AS owner_phone, owner.last_login AS owner_last_login, CONCAT(updater.first_name, '', updater.last_name) AS updater_name FROM documents  doc JOIN users owner ON owner.id = doc.created_by JOIN users updater ON updater.id = doc.updated_by WHERE doc.document_id = ?1";
 
 }

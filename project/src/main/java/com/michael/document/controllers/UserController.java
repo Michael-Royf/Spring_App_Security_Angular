@@ -26,7 +26,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.Map;
 
-import static com.michael.document.utils.RequestUtils.getResponse;
+import static com.michael.document.utils.ResponseUtils.getResponse;
 import static java.util.Collections.emptyMap;
 import static org.springframework.http.MediaType.IMAGE_JPEG_VALUE;
 import static org.springframework.http.MediaType.IMAGE_PNG_VALUE;

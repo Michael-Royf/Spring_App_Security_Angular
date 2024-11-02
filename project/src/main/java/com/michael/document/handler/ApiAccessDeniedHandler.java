@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 
-import static com.michael.document.utils.RequestUtils.handleErrorResponse;
+import static com.michael.document.utils.ResponseUtils.handleErrorResponse;
 
 @Component
 public class ApiAccessDeniedHandler implements AccessDeniedHandler {

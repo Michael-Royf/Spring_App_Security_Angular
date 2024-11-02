@@ -2,7 +2,6 @@ package com.michael.document.security;
 
 import com.michael.document.domain.Token;
 import com.michael.document.domain.TokenData;
-import com.michael.document.entity.ApiAuthentication;
 import com.michael.document.entity.base.RequestContext;
 import com.michael.document.service.JwtService;
 import jakarta.servlet.FilterChain;
@@ -24,7 +23,7 @@ import static com.michael.document.constant.Constants.PUBLIC_ROUTES;
 import static com.michael.document.entity.ApiAuthentication.authenticated;
 import static com.michael.document.enumerations.TokenType.ACCESS;
 import static com.michael.document.enumerations.TokenType.REFRESH;
-import static com.michael.document.utils.RequestUtils.handleErrorResponse;
+import static com.michael.document.utils.ResponseUtils.handleErrorResponse;
 import static java.util.Arrays.asList;
 
 @Component

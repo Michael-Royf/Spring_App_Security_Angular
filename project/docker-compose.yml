@@ -8,7 +8,7 @@ services:
       POSTGRES_PASSWORD: password
       PGDATA: /data/postgres
     volumes:
-      - postgres:/data/postgres
+      - documnet_postgres_data:/data/postgres
     ports:
       - "5432:5432"
     networks:
@@ -23,7 +23,7 @@ services:
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
       PGADMIN_CONFIG_SERVER_MODE: 'False'
     volumes:
-      - pgadmin:/var/lib/pgadmin
+      - documnet_pgadmin_data:/var/lib/pgadmin
     ports:
       - "5050:80"
     networks:
@@ -46,6 +46,6 @@ networks:
     driver: bridge
 
 volumes:
-  postgres:
-  pgadmin:
+  documnet_postgres_data:
+  documnet_pgadmin_data:
 

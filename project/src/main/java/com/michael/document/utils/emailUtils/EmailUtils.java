@@ -7,7 +7,7 @@ public class EmailUtils {
     }
 
     private static String getVerificationUrl(String host, String key) {
-        return host + "/verify/account?key=" + key;
+        return host + "/user/verify/account?key=" + key;
     }
     public static String getResetPasswordMessage(String name, String host, String token) {
         return "Hello " + name + ",\n\nPlease use this link below to reset your password. \n\n" +

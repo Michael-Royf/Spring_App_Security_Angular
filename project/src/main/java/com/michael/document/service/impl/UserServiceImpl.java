@@ -37,9 +37,11 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static com.michael.document.constant.Constants.*;
 import static com.michael.document.utils.UserUtils.*;
@@ -343,9 +345,7 @@ public class UserServiceImpl implements UserService {
                 .loginAttempts(0)
                 .qrCodeSecret(EMPTY)
                 .phone(EMPTY)//TODO: fix
-                .bio(EMPTY)
-                //   .imageUrl(profileImageService.)
-                // .imageUrl("https://cdn-icons-png.flaticon.com/512/149/149071.png")
+                .bio(EMPTY) 
                 .build();
     }
 
@@ -399,15 +399,9 @@ public class UserServiceImpl implements UserService {
 
 
     private String firstLetterUpper(String world) {
-        String[] words = world.split(" ");
-        StringBuilder result = new StringBuilder();
-        for (String word : words) {
-            if (word.length() > 0) {
-                char firstChar = Character.toUpperCase(word.charAt(0));
-                String capitalizedWord = firstChar + word.substring(1).toLowerCase();
-                result.append(capitalizedWord).append(" ");
-            }
-        }
-        return result.toString().trim();
+        return Arrays.stream(world.split(" "))
+                .filter(word -> !word.isEmpty())
+                .map(word -> Character.toUpperCase(word.charAt(0)) + word.substring(1).toLowerCase())
+                .collect(Collectors.joining(" "));
     }
 }
